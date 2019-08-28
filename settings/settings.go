@@ -4,7 +4,7 @@
  * @Email: eagle.xiang@outlook.com
  * @Github: https://github.com/eaglexiang
  * @Date: 2019-02-06 17:30:28
- * @LastEditTime: 2019-08-28 20:39:48
+ * @LastEditTime: 2019-08-28 20:54:52
  */
 
 package settings
@@ -69,8 +69,6 @@ func (s Settings) Get(key string) (value string) {
 
 // GetInt64 获取配置，且尝试转换为int64,转换失败会触发panic
 func (s Settings) GetInt64(key string) int64 {
-	key = s.getTrueKey(key)
-
 	_v := s.Get(key)
 	v, err := strconv.ParseInt(
 		_v,
@@ -88,7 +86,13 @@ func (s Settings) GetInt64(key string) int64 {
 func (s Settings) Exsit(key string) bool {
 	key = s.getTrueKey(key)
 
-	_, ok := s.data.Get(key)
+	className, subKey, ok := getChild(key)
+	if ok {
+		child := s.GetChild(className)
+		return child.Exsit(subKey)
+	}
+
+	_, ok = s.data.Get(key)
 	return ok
 }
 
@@ -105,7 +109,7 @@ func (s *Settings) SetDefault(key, value string) {
 // ImportLines 从 []string 导入数据
 // 每行应该遵从以下格式：
 // key = value
-func (s Settings) ImportLines(data []string) error {
+func (s *Settings) ImportLines(data []string) error {
 	for _, line := range data {
 		objs := strings.Split(line, "=")
 		if len(objs) < 2 {
