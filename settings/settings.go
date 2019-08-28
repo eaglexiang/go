@@ -4,13 +4,14 @@
  * @Email: eagle.xiang@outlook.com
  * @Github: https://github.com/eaglexiang
  * @Date: 2019-02-06 17:30:28
- * @LastEditTime: 2019-08-28 20:28:25
+ * @LastEditTime: 2019-08-28 20:39:48
  */
 
 package settings
 
 import (
 	"errors"
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -68,6 +69,8 @@ func (s Settings) Get(key string) (value string) {
 
 // GetInt64 获取配置，且尝试转换为int64,转换失败会触发panic
 func (s Settings) GetInt64(key string) int64 {
+	key = s.getTrueKey(key)
+
 	_v := s.Get(key)
 	v, err := strconv.ParseInt(
 		_v,
@@ -83,6 +86,8 @@ func (s Settings) GetInt64(key string) int64 {
 
 // Exsit 判断 key 是否存在
 func (s Settings) Exsit(key string) bool {
+	key = s.getTrueKey(key)
+
 	_, ok := s.data.Get(key)
 	return ok
 }
@@ -128,14 +133,29 @@ func (s *Settings) GetChild(className string) (child *Settings) {
 	return
 }
 
-// ToString 输出为字符串
-func (s Settings) ToString() string {
-	var text string
-
+func (s Settings) toSets() (sets []string) {
 	s.data.Range(func(k string, v interface{}) bool {
-		text += k + " = " + v.(string) + "\n"
+		var set = fmt.Sprint(k, " = ", v)
+		sets = append(sets, set)
 		return true
 	})
+
+	return
+}
+
+// ToString 输出为字符串
+func (s Settings) ToString() string {
+	var sets = s.toSets()
+
+	for className, child := range s.childs {
+		var childSets = child.toSets()
+		for i, v := range childSets {
+			childSets[i] = fmt.Sprint(className, classSep, v)
+		}
+		sets = append(sets, childSets...)
+	}
+
+	var text = strings.Join(sets, "\n")
 
 	return text
 }
