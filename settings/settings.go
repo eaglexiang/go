@@ -4,7 +4,7 @@
  * @Email: eagle.xiang@outlook.com
  * @Github: https://github.com/eaglexiang
  * @Date: 2019-02-06 17:30:28
- * @LastEditTime: 2019-08-26 23:31:44
+ * @LastEditTime: 2019-08-28 20:28:25
  */
 
 package settings
@@ -28,18 +28,17 @@ var globalSettings Settings
 // 可设置键名绑定
 type Settings struct {
 	childs map[string]*Settings // map[class_name] class_settings
+	binds  map[string]string    // map [bind_key] true_key
 	data   smartmap.SmartStrMap
 }
 
 // Set 配置
 func (s *Settings) Set(key, value string) {
-	className, ok := getClassName(key)
+	key = s.getTrueKey(key)
+
+	className, subKey, ok := getChild(key)
 	if ok {
 		child := s.GetChild(className)
-		subKey, ok := getSubKey(key)
-		if !ok {
-			panic("no subKey for " + key) // 存在className时应该必然存在subKey
-		}
 		child.Set(subKey, value)
 		return
 	}
@@ -49,13 +48,11 @@ func (s *Settings) Set(key, value string) {
 
 // Get 获取配置，key不存在则触发panic
 func (s Settings) Get(key string) (value string) {
-	className, ok := getClassName(key)
+	key = s.getTrueKey(key)
+
+	className, subKey, ok := getChild(key)
 	if ok {
 		child := s.GetChild(className)
-		subKey, ok := getSubKey(key)
-		if !ok {
-			panic("no subKey for " + key) // className与subKey必然同时存在
-		}
 		value = child.Get(subKey)
 		return
 	}
@@ -84,12 +81,6 @@ func (s Settings) GetInt64(key string) int64 {
 	return v
 }
 
-// Bind 将bindKey与trueKey进行绑定，使bindKey单向映射为trueKey
-// 一个trueKey可映射多个bindKey
-func (s *Settings) Bind(bindKey string, trueKey string) {
-	s.data.Bind(bindKey, trueKey)
-}
-
 // Exsit 判断 key 是否存在
 func (s Settings) Exsit(key string) bool {
 	_, ok := s.data.Get(key)
@@ -98,6 +89,8 @@ func (s Settings) Exsit(key string) bool {
 
 // SetDefault 设置默认值，不会覆盖既有值
 func (s *Settings) SetDefault(key, value string) {
+	key = s.getTrueKey(key)
+
 	if s.Exsit(key) {
 		return
 	}
@@ -145,4 +138,35 @@ func (s Settings) ToString() string {
 	})
 
 	return text
+}
+
+// Bind 绑定
+// 建立bindKey到trueKey的映射
+// 一个bindKey只可映一个trueKey
+// 一个trueKey可接受多个bindKey的映射
+func (s *Settings) Bind(bindKey, trueKey string) {
+	if s.binds == nil {
+		s.binds = make(map[string]string)
+	}
+
+	bindKey = strings.ToLower(bindKey)
+	trueKey = strings.ToLower(trueKey)
+
+	s.binds[bindKey] = trueKey
+}
+
+// getTrueKey 获取bindKey对应的trueKey，如果不存在Bind关系，则返回原bindKey
+func (s Settings) getTrueKey(bindKey string) (trueKey string) {
+	if s.binds == nil {
+		trueKey = bindKey
+		return
+	}
+
+	bindKey = strings.ToLower(bindKey)
+	if key, ok := s.binds[bindKey]; ok {
+		trueKey = key
+	} else {
+		trueKey = bindKey
+	}
+	return
 }
