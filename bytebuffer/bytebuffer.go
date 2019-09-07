@@ -3,12 +3,13 @@
  * @Github: https://github.com/eaglexiang
  * @Date: 2019-01-02 17:46:46
  * @LastEditors: EagleXiang
- * @LastEditTime: 2019-08-25 19:51:37
+ * @LastEditTime: 2019-09-07 21:37:37
  */
 
 package bytebuffer
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"sync"
@@ -185,5 +186,54 @@ func (buffer *ByteBuffer) Move(step int) (err error) {
 
 	buffer.Off = off
 	buffer.Length = length
+	return
+}
+
+// MarshalJSON JSON序列化器
+func (buffer *ByteBuffer) MarshalJSON() (b []byte, err error) {
+	data := make(map[string]interface{})
+	data["off"] = buffer.Off
+	data["length"] = buffer.Length
+	data["buf"] = buffer.buf
+
+	b, err = json.Marshal(data)
+	return
+}
+
+// UnmarshalJSON JSON反序列化器
+func (buffer *ByteBuffer) UnmarshalJSON(b []byte) (err error) {
+	data := make(map[string]interface{})
+	err = json.Unmarshal(b, &data)
+	if err != nil {
+		return
+	}
+
+	if _off, ok := data["off"]; ok {
+		if off, ok := _off.(float64); ok {
+			buffer.Off = int(off)
+		} else {
+			err = errors.New("type for Off should be float64 but " + fmt.Sprintf("%T", _off))
+			return
+		}
+	}
+
+	if _length, ok := data["length"]; ok {
+		if length, ok := _length.(float64); ok {
+			buffer.Length = int(length)
+		} else {
+			err = errors.New("type for Length should be float64 but " + fmt.Sprintf("%T", _length))
+			return
+		}
+	}
+
+	if _buf, ok := data["buf"]; ok {
+		if buf, ok := _buf.(string); ok {
+			buffer.buf = []byte(buf)
+		} else {
+			err = errors.New("type for buf should be string but " + fmt.Sprintf("%T", _buf))
+			return
+		}
+	}
+
 	return
 }

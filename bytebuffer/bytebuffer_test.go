@@ -4,11 +4,12 @@
  * @Email: eagle.xiang@outlook.com
  * @Github: https://github.com/eaglexiang
  * @Date: 2019-08-20 20:49:26
- * @LastEditTime: 2019-08-25 19:53:10
+ * @LastEditTime: 2019-09-07 21:37:56
  */
 package bytebuffer
 
 import (
+	"encoding/json"
 	"testing"
 )
 
@@ -62,5 +63,24 @@ func Test_Move(t *testing.T) {
 	b.Move(-1)
 	if b.String() != "test" {
 		t.Error("wrong b string: ", b.String())
+	}
+}
+
+func Test_MarshalJSON(t *testing.T) {
+	b := GetStringBuffer("test")
+
+	j, err := json.Marshal(b)
+	if err != nil {
+		t.Error(err)
+	}
+
+	_b := new(ByteBuffer)
+	err = json.Unmarshal(j, _b)
+	if err != nil {
+		t.Error(err)
+	}
+
+	if b.String() != "test" {
+		t.Error("wrong b.String: ", b.String())
 	}
 }
