@@ -4,7 +4,7 @@
  * @Email: eagle.xiang@outlook.com
  * @Github: https://github.com/eaglexiang
  * @Date: 2019-08-17 10:35:34
- * @LastEditTime: 2019-08-22 21:39:06
+ * @LastEditTime: 2019-09-07 20:48:03
  */
 
 package virtualconn
@@ -35,12 +35,17 @@ func (conn VirtualConn) Write(b []byte) (n int, err error) {
 
 // PutReadBuf 将buf投入Read缓冲区
 func (conn VirtualConn) PutReadBuf(b []byte) {
-	conn.bufRead <- b
+	buf := make([]byte, len(b))
+	copy(buf, b)
+	conn.bufRead <- buf
 }
 
 // GetWriteBuf 从Write缓冲区取出buf
 func (conn VirtualConn) GetWriteBuf() []byte {
-	return <-conn.bufWrite
+	b := <-conn.bufWrite
+	buf := make([]byte, len(b))
+	copy(buf, b)
+	return buf
 }
 
 // Close 关闭
