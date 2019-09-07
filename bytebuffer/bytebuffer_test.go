@@ -4,7 +4,7 @@
  * @Email: eagle.xiang@outlook.com
  * @Github: https://github.com/eaglexiang
  * @Date: 2019-08-20 20:49:26
- * @LastEditTime: 2019-09-07 21:37:56
+ * @LastEditTime: 2019-09-07 22:22:00
  */
 package bytebuffer
 
@@ -73,6 +73,8 @@ func Test_MarshalJSON(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
+
+	t.Log(string(j))
 
 	_b := new(ByteBuffer)
 	err = json.Unmarshal(j, _b)

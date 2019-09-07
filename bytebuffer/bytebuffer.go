@@ -3,7 +3,7 @@
  * @Github: https://github.com/eaglexiang
  * @Date: 2019-01-02 17:46:46
  * @LastEditors: EagleXiang
- * @LastEditTime: 2019-09-07 21:37:37
+ * @LastEditTime: 2019-09-07 22:25:36
  */
 
 package bytebuffer
@@ -191,10 +191,11 @@ func (buffer *ByteBuffer) Move(step int) (err error) {
 
 // MarshalJSON JSON序列化器
 func (buffer *ByteBuffer) MarshalJSON() (b []byte, err error) {
+	buffer = buffer.Clone() // 减少体积
+
 	data := make(map[string]interface{})
-	data["off"] = buffer.Off
 	data["length"] = buffer.Length
-	data["buf"] = buffer.buf
+	data["buf"] = buffer.Data()
 
 	b, err = json.Marshal(data)
 	return
