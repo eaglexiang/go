@@ -4,7 +4,7 @@
  * @Email: eagle.xiang@outlook.com
  * @Github: https://github.com/eaglexiang
  * @Date: 2019-02-06 17:30:28
- * @LastEditTime: 2019-08-28 20:54:52
+ * @LastEditTime: 2019-09-08 11:41:32
  */
 
 package settings
@@ -17,9 +17,6 @@ import (
 
 	smartmap "github.com/eaglexiang/go/smart-stringkey-map"
 )
-
-// classSep 类分隔符
-const classSep = "."
 
 // globalSettings 默认的全局配置
 var globalSettings Settings
