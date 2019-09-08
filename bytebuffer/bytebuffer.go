@@ -3,12 +3,13 @@
  * @Github: https://github.com/eaglexiang
  * @Date: 2019-01-02 17:46:46
  * @LastEditors: EagleXiang
- * @LastEditTime: 2019-09-07 22:25:36
+ * @LastEditTime: 2019-09-08 10:56:35
  */
 
 package bytebuffer
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -195,7 +196,8 @@ func (buffer *ByteBuffer) MarshalJSON() (b []byte, err error) {
 
 	data := make(map[string]interface{})
 	data["length"] = buffer.Length
-	data["buf"] = buffer.Data()
+	buf := base64.StdEncoding.EncodeToString(buffer.Data())
+	data["buf"] = buf
 
 	b, err = json.Marshal(data)
 	return
@@ -229,7 +231,12 @@ func (buffer *ByteBuffer) UnmarshalJSON(b []byte) (err error) {
 
 	if _buf, ok := data["buf"]; ok {
 		if buf, ok := _buf.(string); ok {
-			buffer.buf = []byte(buf)
+			var _buf []byte
+			_buf, err = base64.StdEncoding.DecodeString(buf)
+			if err != nil {
+				return
+			}
+			buffer.buf = _buf
 		} else {
 			err = errors.New("type for buf should be string but " + fmt.Sprintf("%T", _buf))
 			return
