@@ -4,7 +4,7 @@
  * @Email: eagle.xiang@outlook.com
  * @Github: https://github.com/eaglexiang
  * @Date: 2019-08-02 19:32:39
- * @LastEditTime: 2019-08-03 11:03:53
+ * @LastEditTime: 2019-09-21 14:02:53
  */
 
 package tunnel
@@ -19,8 +19,8 @@ func Test_pipe(t *testing.T) {
 	var out = NewVirtualConn()
 
 	p := newPipe()
-	p.SetIn(in)
-	p.SetOut(out)
+	p.In = in
+	p.Out = out
 
 	go p.Flow()
 

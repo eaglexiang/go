@@ -4,107 +4,71 @@
  * @Email: eagle.xiang@outlook.com
  * @Github: https://github.com/eaglexiang
  * @Date: 2019-07-24 21:22:45
- * @LastEditTime: 2019-08-28 19:40:16
+ * @LastEditTime: 2019-09-21 14:02:39
  */
 
 package tunnel
 
 import (
 	"net"
+	"sync"
 	"time"
 
 	"github.com/eaglexiang/go/bytebuffer"
-	"github.com/pkg/errors"
 )
 
-// pipe 单向流动的数据管道，可透明进行数据的加解密，以及限速工作。
+// pipe 单向流动的数据管道
 type pipe struct {
-	in      net.Conn // 入口
-	out     net.Conn // 出口
-	bSize   int      // 数据缓冲区的尺寸
-	timeout time.Duration
-	pipeStatus
+	l          *sync.Mutex
+	In         net.Conn // 入口
+	Out        net.Conn // 出口
+	BufferSize int      // 数据缓冲区的尺寸
+	Timeout    time.Duration
+	flowed     bool
+	closed     bool
 }
 
 func newPipe() *pipe {
 	var p = new(pipe)
+	p.l = new(sync.Mutex)
 	return p
-}
-
-// SetIn 设置入口
-func (p *pipe) SetIn(in net.Conn) {
-	p.in = in
-}
-
-// SetOut 设置出口
-func (p *pipe) SetOut(out net.Conn) {
-	p.out = out
-}
-
-// SetBufferSize 设置buffer的尺寸
-func (p *pipe) SetBufferSize(size int) {
-	p.bSize = size
-}
-
-// SetTimeout 设置超时时间
-func (p *pipe) SetTimeout(timeout time.Duration) {
-	p.timeout = timeout
 }
 
 // Close 关闭Tunnel，关闭前会停止其流动
 func (p *pipe) Close() {
-	p.l.Lock()
-	defer p.l.Unlock()
-
-	p.pipeStatus.Close()
-
-	if p.in != nil {
-		p.in.Close()
-	}
+	p.closed = true
 }
 
 // Closed 是否已经关闭
 func (p *pipe) Closed() bool {
-	return p.pipeStatus.Closed()
+	return p.closed
 }
 
 // Clear 清空以便重新利用
 func (p *pipe) Clear() {
-	p.l.Lock()
-	defer p.l.Unlock()
-
-	p.in = nil
-	p.out = nil
-	p.pipeStatus.Clear()
-	p.timeout = 0
+	p.In = nil
+	p.Out = nil
+	p.closed = false
+	p.flowed = false
+	p.Timeout = 0
 }
 
 // In 获取管道的入口
 func (p *pipe) GetIn() net.Conn {
-	return p.in
+	return p.In
 }
 
 // Out 获取管道的出口
 func (p *pipe) GetOut() net.Conn {
-	return p.out
+	return p.Out
 }
 
 // Out 向出口写数据
 func (p *pipe) WriteOut(b *bytebuffer.ByteBuffer) (err error) {
-	p.l.Lock()
-	var out = p.out
-	var timeout = p.timeout
-	p.l.Unlock()
-
-	return writePipeOut(b, out, timeout)
+	return writePipeOut(b, p.Out, p.Timeout)
 }
 
 func writePipeOut(b *bytebuffer.ByteBuffer, conn net.Conn, timeout time.Duration) (err error) {
-	if conn == nil {
-		err = errors.New("out of pipe is nil")
-		return
-	}
-
 	if timeout != 0 {
 		var dl = time.Now().Add(timeout)
 		conn.SetWriteDeadline(dl)
@@ -129,30 +93,16 @@ func writePipeOut(b *bytebuffer.ByteBuffer, conn net.Conn, timeout time.Duration
 
 // ReadIn 从入口读数据
 func (p *pipe) ReadIn(b *bytebuffer.ByteBuffer) (err error) {
-	p.l.Lock()
-	var in = p.in
-	var timeout = p.timeout
-	p.l.Unlock()
-
-	return readPipeIn(in, b, timeout)
+	return readPipeIn(p.In, b, p.Timeout)
 }
 
 func readPipeIn(conn net.Conn, b *bytebuffer.ByteBuffer, timeout time.Duration) (err error) {
-	if conn == nil {
-		err = errors.New("in of pipe is nil")
-		return
-	}
-
 	if timeout != 0 {
 		var dl = time.Now().Add(timeout)
 		conn.SetDeadline(dl)
 	}
 
 	b.Length, err = conn.Read(b.Buf())
-	if err != nil {
-		return
-	}
-
 	return
 }
 
@@ -168,35 +118,26 @@ func (p *pipe) Flow() {
 	p.flowed = true
 	p.l.Unlock()
 
-	defer func() {
-		p.l.Lock()
-		p.flowed = false
-		p.l.Unlock()
-	}()
-
 	p.flow()
+
+	p.l.Lock()
+	p.flowed = false
+	p.l.Unlock()
 }
 
 // flow 开始流动
 // 此方法阻塞
 func (p *pipe) flow() {
-	var b = make(chan *bytebuffer.ByteBuffer, p.bSize)
+	var b = make(chan *bytebuffer.ByteBuffer, p.BufferSize)
 	go p.flowFromIn(b)
 	p.flowToOut(b)
 }
 
 // flowFromIn 数据从入口流入
 func (p *pipe) flowFromIn(bf chan *bytebuffer.ByteBuffer) {
-	p.l.Lock()
-	var (
-		in      = p.in
-		timeout = p.timeout
-	)
-	p.l.Unlock()
-
 	for {
 		b := bytebuffer.GetBuffer()
-		err := readPipeIn(in, b, timeout)
+		err := readPipeIn(p.In, b, p.Timeout)
 		if err != nil {
 			bytebuffer.PutBuffer(b)
 			break
@@ -209,13 +150,8 @@ func (p *pipe) flowFromIn(bf chan *bytebuffer.ByteBuffer) {
 
 // flowToOut 数据从bf流入出口
 func (p *pipe) flowToOut(bf chan *bytebuffer.ByteBuffer) {
-	p.l.Lock()
-	var out = p.out
-	var timeout = p.timeout
-	p.l.Unlock()
-
 	for b := range bf {
-		err := writePipeOut(b, out, timeout)
+		err := writePipeOut(b, p.Out, p.Timeout)
 		bytebuffer.PutBuffer(b)
 		if err != nil {
 			break

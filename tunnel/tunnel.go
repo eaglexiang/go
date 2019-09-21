@@ -3,7 +3,7 @@
  * @Github: https://github.com/eaglexiang
  * @Date: 2019-01-02 17:28:48
  * @LastEditors: EagleXiang
- * @LastEditTime: 2019-08-26 23:37:24
+ * @LastEditTime: 2019-09-21 14:03:51
  */
 
 package tunnel
@@ -159,18 +159,18 @@ func (t *Tunnel) WriteRightStr(str string) (err error) {
 
 // SetLeft 设置左边
 func (t *Tunnel) SetLeft(conn net.Conn) {
-	t.left2Right.SetIn(conn)
-	t.right2Left.SetOut(conn)
+	t.left2Right.In = conn
+	t.right2Left.Out = conn
 }
 
 // SetRight 设置右边
 func (t *Tunnel) SetRight(conn net.Conn) {
-	t.left2Right.SetOut(conn)
-	t.right2Left.SetIn(conn)
+	t.left2Right.Out = conn
+	t.right2Left.In = conn
 }
 
 // SetTimeout 设置超时时间
 func (t *Tunnel) SetTimeout(timeout time.Duration) {
-	t.left2Right.SetTimeout(timeout)
-	t.right2Left.SetTimeout(timeout)
+	t.left2Right.Timeout = timeout
+	t.right2Left.Timeout = timeout
 }
