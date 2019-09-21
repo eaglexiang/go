@@ -4,7 +4,7 @@
  * @Email: eagle.xiang@outlook.com
  * @Github: https://github.com/eaglexiang
  * @Date: 2019-07-24 21:22:45
- * @LastEditTime: 2019-09-21 14:02:39
+ * @LastEditTime: 2019-09-21 14:07:00
  */
 
 package tunnel
@@ -35,8 +35,17 @@ func newPipe() *pipe {
 }
 
 // Close 关闭Tunnel，关闭前会停止其流动
-func (p *pipe) Close() {
+func (p *pipe) Close() (err error) {
+	p.l.Lock()
+	defer p.l.Unlock()
+
+	if p.closed {
+		return
+	}
+
 	p.closed = true
+	err = p.In.Close()
+	return
 }
 
 // Closed 是否已经关闭

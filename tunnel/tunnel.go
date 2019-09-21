@@ -3,7 +3,7 @@
  * @Github: https://github.com/eaglexiang
  * @Date: 2019-01-02 17:28:48
  * @LastEditors: EagleXiang
- * @LastEditTime: 2019-09-21 14:03:51
+ * @LastEditTime: 2019-09-21 14:09:04
  */
 
 package tunnel
@@ -70,9 +70,15 @@ func (t *Tunnel) ReadRight(b *bytebuffer.ByteBuffer) error {
 }
 
 // Close 关闭Tunnel，关闭前会停止其双向的流动
-func (t *Tunnel) Close() {
-	t.left2Right.Close()
-	t.right2Left.Close()
+func (t *Tunnel) Close() (err error) {
+	errl2r := t.left2Right.Close()
+	errr2l := t.right2Left.Close()
+
+	err = errl2r
+	if errr2l != nil {
+		err = errr2l
+	}
+	return
 }
 
 // Closed Tunnel是否已经关闭
@@ -92,12 +98,6 @@ func (t *Tunnel) Flow() {
 	t.flowed = true
 	t.l.Unlock()
 
-	defer func() {
-		t.l.Lock()
-		t.flowed = false
-		t.l.Unlock()
-	}()
-
 	wg := sync.WaitGroup{}
 	wg.Add(2)
 	go func() {
@@ -109,6 +109,10 @@ func (t *Tunnel) Flow() {
 		wg.Done()
 	}()
 	wg.Wait()
+
+	t.l.Lock()
+	t.flowed = false
+	t.l.Unlock()
 }
 
 // IsNil Tunnel的Left和Right都为nil
