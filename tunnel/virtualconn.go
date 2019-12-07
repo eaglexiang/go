@@ -4,7 +4,7 @@
  * @Email: eagle.xiang@outlook.com
  * @Github: https://github.com/eaglexiang
  * @Date: 2019-06-02 10:49:54
- * @LastEditTime: 2019-08-03 10:42:41
+ * @LastEditTime: 2019-12-07 17:17:58
  */
 
 package tunnel
@@ -18,7 +18,7 @@ import (
 // NewVirtualConn 创建新的虚拟连接
 func NewVirtualConn() net.Conn {
 	return &virtualConn{
-		msgs: make(chan []byte, 1),
+		msgs: make(chan []byte, 2),
 	}
 }
 
