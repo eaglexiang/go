@@ -1,10 +1,10 @@
 /*
  * @Author: EagleXiang
- * @LastEditors: EagleXiang
+ * @LastEditors  : EagleXiang
  * @Email: eagle.xiang@outlook.com
  * @Github: https://github.com/eaglexiang
  * @Date: 2019-07-24 21:22:45
- * @LastEditTime: 2019-09-21 14:07:00
+ * @LastEditTime : 2019-12-19 21:57:33
  */
 
 package tunnel
@@ -132,6 +132,8 @@ func (p *pipe) Flow() {
 	p.l.Lock()
 	p.flowed = false
 	p.l.Unlock()
+
+	p.Out.Close()
 }
 
 // flow 开始流动
