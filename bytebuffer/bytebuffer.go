@@ -18,8 +18,8 @@ import (
 
 var (
 	pools       = make(map[int]*sync.Pool)
-	defaultSize = 1000  // defaultSize 默认的Buffer尺寸
-	debug       = false // debug开关，当debug为true，Put操作不会清空ByteBuffer
+	defaultSize = 64_000_000 // defaultSize 默认的Buffer尺寸
+	debug       = false      // debug开关，当debug为true，Put操作不会清空ByteBuffer
 )
 
 func init() {
