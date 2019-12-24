@@ -12,7 +12,6 @@ package tunnel
 import (
 	"net"
 	"sync"
-	"time"
 
 	"github.com/eaglexiang/go/bytebuffer"
 )
@@ -23,7 +22,6 @@ type pipe struct {
 	In         net.Conn // 入口
 	Out        net.Conn // 出口
 	BufferSize int      // 数据缓冲区的尺寸
-	Timeout    time.Duration
 	flowed     bool
 	closed     bool
 }
@@ -44,7 +42,7 @@ func (p *pipe) Close() (err error) {
 	}
 
 	p.closed = true
-	err = p.In.Close()
+	err = p.Out.Close()
 	return
 }
 
@@ -59,7 +57,6 @@ func (p *pipe) Clear() {
 	p.Out = nil
 	p.closed = false
 	p.flowed = false
-	p.Timeout = 0
 }
 
 // In 获取管道的入口
@@ -74,15 +71,10 @@ func (p *pipe) GetOut() net.Conn {
 
 // Out 向出口写数据
 func (p *pipe) WriteOut(b *bytebuffer.ByteBuffer) (err error) {
-	return writePipeOut(b, p.Out, p.Timeout)
+	return writePipeOut(b, p.Out)
 }
 
-func writePipeOut(b *bytebuffer.ByteBuffer, conn net.Conn, timeout time.Duration) (err error) {
-	if timeout != 0 {
-		var dl = time.Now().Add(timeout)
-		conn.SetWriteDeadline(dl)
-	}
-
+func writePipeOut(b *bytebuffer.ByteBuffer, conn net.Conn) (err error) {
 	b = b.Clone()
 	defer bytebuffer.PutBuffer(b)
 	for {
@@ -102,15 +94,10 @@ func writePipeOut(b *bytebuffer.ByteBuffer, conn net.Conn, timeout time.Duration
 
 // ReadIn 从入口读数据
 func (p *pipe) ReadIn(b *bytebuffer.ByteBuffer) (err error) {
-	return readPipeIn(p.In, b, p.Timeout)
+	return readPipeIn(p.In, b)
 }
 
-func readPipeIn(conn net.Conn, b *bytebuffer.ByteBuffer, timeout time.Duration) (err error) {
-	if timeout != 0 {
-		var dl = time.Now().Add(timeout)
-		conn.SetDeadline(dl)
-	}
-
+func readPipeIn(conn net.Conn, b *bytebuffer.ByteBuffer) (err error) {
 	b.Length, err = conn.Read(b.Buf())
 	return
 }
@@ -148,7 +135,7 @@ func (p *pipe) flow() {
 func (p *pipe) flowFromIn(bf chan *bytebuffer.ByteBuffer) {
 	for {
 		b := bytebuffer.GetBuffer()
-		err := readPipeIn(p.In, b, p.Timeout)
+		err := readPipeIn(p.In, b)
 		if err != nil {
 			bytebuffer.PutBuffer(b)
 			break
@@ -162,7 +149,7 @@ func (p *pipe) flowFromIn(bf chan *bytebuffer.ByteBuffer) {
 // flowToOut 数据从bf流入出口
 func (p *pipe) flowToOut(bf chan *bytebuffer.ByteBuffer) {
 	for b := range bf {
-		err := writePipeOut(b, p.Out, p.Timeout)
+		err := writePipeOut(b, p.Out)
 		bytebuffer.PutBuffer(b)
 		if err != nil {
 			break

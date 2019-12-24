@@ -11,7 +11,6 @@ package tunnel
 import (
 	"net"
 	"sync"
-	"time"
 
 	"github.com/eaglexiang/go/bytebuffer"
 )
@@ -171,10 +170,4 @@ func (t *Tunnel) SetLeft(conn net.Conn) {
 func (t *Tunnel) SetRight(conn net.Conn) {
 	t.left2Right.Out = conn
 	t.right2Left.In = conn
-}
-
-// SetTimeout 设置超时时间
-func (t *Tunnel) SetTimeout(timeout time.Duration) {
-	t.left2Right.Timeout = timeout
-	t.right2Left.Timeout = timeout
 }
