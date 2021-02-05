@@ -62,11 +62,13 @@ func getBufferSize(size ...int) (_size int) {
 func GetBuffer(size ...int) (buffer *ByteBuffer) {
 	var _size = getBufferSize(size...)
 
-	if pool, ok := pools[_size]; ok {
-		buffer = pool.Get().(*ByteBuffer)
-	} else {
-		buffer = CreateByteBuffer(_size)
-	}
+	// if pool, ok := pools[_size]; ok {
+	// 	buffer = pool.Get().(*ByteBuffer)
+	// } else {
+	// 	buffer = CreateByteBuffer(_size)
+	// }
+
+	buffer = CreateByteBuffer(_size)
 
 	return
 }
@@ -87,13 +89,13 @@ func GetStringBuffer(str string) (buffer *ByteBuffer) {
 
 // PutBuffer 归还Buffer，不符合默认尺寸的buffer会被丢弃
 func PutBuffer(buffer *ByteBuffer) {
-	l := buffer.Cap()
-	if pool, ok := pools[l]; ok {
-		if !debug {
-			buffer.Clear()
-		}
-		pool.Put(buffer)
-	}
+	// l := buffer.Cap()
+	// if pool, ok := pools[l]; ok {
+	// 	if !debug {
+	// 		buffer.Clear()
+	// 	}
+	// 	pool.Put(buffer)
+	// }
 }
 
 // ByteBuffer bytes缓冲器

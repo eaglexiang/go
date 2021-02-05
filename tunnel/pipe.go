@@ -12,6 +12,7 @@ package tunnel
 import (
 	"net"
 	"sync"
+	"time"
 
 	"github.com/eaglexiang/go/bytebuffer"
 )
@@ -78,6 +79,10 @@ func writePipeOut(b *bytebuffer.ByteBuffer, conn net.Conn) (err error) {
 	b = b.Clone()
 	defer bytebuffer.PutBuffer(b)
 	for {
+		timeout := time.Second * 30
+		ddl := time.Now().Add(timeout)
+		conn.SetWriteDeadline(ddl)
+
 		n, err := conn.Write(b.Data())
 		if err != nil {
 			break
@@ -98,6 +103,10 @@ func (p *pipe) ReadIn(b *bytebuffer.ByteBuffer) (err error) {
 }
 
 func readPipeIn(conn net.Conn, b *bytebuffer.ByteBuffer) (err error) {
+	timeout := time.Second * 30
+	ddl := time.Now().Add(timeout)
+	conn.SetReadDeadline(ddl)
+
 	b.Length, err = conn.Read(b.Buf())
 	return
 }
@@ -119,8 +128,6 @@ func (p *pipe) Flow() {
 	p.l.Lock()
 	p.flowed = false
 	p.l.Unlock()
-
-	p.Out.Close()
 }
 
 // flow 开始流动

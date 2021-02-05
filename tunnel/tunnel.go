@@ -109,6 +109,8 @@ func (t *Tunnel) Flow() {
 	}()
 	wg.Wait()
 
+	t.Close()
+
 	t.l.Lock()
 	t.flowed = false
 	t.l.Unlock()
