@@ -11,6 +11,7 @@ package tunnel
 import (
 	"net"
 	"sync"
+	"time"
 
 	"github.com/eaglexiang/go/bytebuffer"
 )
@@ -30,6 +31,24 @@ func newTunnel() *Tunnel {
 		right2Left: newPipe(),
 	}
 	return &t
+}
+
+// SetReadTimeout 设置读超时
+func (t *Tunnel) SetReadTimeout(timeout time.Duration) {
+	t.left2Right.SetReadTimeout(timeout)
+	t.right2Left.SetReadTimeout(timeout)
+}
+
+// SetWriteTimeout 设置写超时
+func (t *Tunnel) SetWriteTimeout(timeout time.Duration) {
+	t.left2Right.SetWriteTimeout(timeout)
+	t.right2Left.SetWriteTimeout(timeout)
+}
+
+// SetTimeout 设置超时
+func (t *Tunnel) SetTimeout(timeout time.Duration) {
+	t.SetReadTimeout(timeout)
+	t.SetWriteTimeout(timeout)
 }
 
 // Clear 清空Tunnel

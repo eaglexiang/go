@@ -25,12 +25,31 @@ type pipe struct {
 	BufferSize int      // 数据缓冲区的尺寸
 	flowed     bool
 	closed     bool
+
+	readTimeout  time.Duration
+	writeTimeout time.Duration
 }
 
 func newPipe() *pipe {
 	var p = new(pipe)
 	p.l = new(sync.Mutex)
 	return p
+}
+
+// SetReadTimeout 设置读超时
+func (p *pipe) SetReadTimeout(timeout time.Duration) {
+	p.readTimeout = timeout
+}
+
+// SetWriteTimeout 设置写操作
+func (p *pipe) SetWriteTimeout(timeout time.Duration) {
+	p.writeTimeout = timeout
+}
+
+// SetTimeout 设置超时
+func (p *pipe) SetTimeout(timeout time.Duration) {
+	p.SetReadTimeout(timeout)
+	p.SetWriteTimeout(timeout)
 }
 
 // Close 关闭Tunnel，关闭前会停止其流动
@@ -72,16 +91,17 @@ func (p *pipe) GetOut() net.Conn {
 
 // Out 向出口写数据
 func (p *pipe) WriteOut(b *bytebuffer.ByteBuffer) (err error) {
-	return writePipeOut(b, p.Out)
+	return writePipeOut(b, p.Out, p.writeTimeout)
 }
 
-func writePipeOut(b *bytebuffer.ByteBuffer, conn net.Conn) (err error) {
+func writePipeOut(b *bytebuffer.ByteBuffer, conn net.Conn, timeout ...time.Duration) (err error) {
 	b = b.Clone()
 	defer bytebuffer.PutBuffer(b)
 	for {
-		timeout := time.Second * 30
-		ddl := time.Now().Add(timeout)
-		conn.SetWriteDeadline(ddl)
+		if len(timeout) > 0 {
+			ddl := time.Now().Add(timeout[0])
+			conn.SetWriteDeadline(ddl)
+		}
 
 		n, err := conn.Write(b.Data())
 		if err != nil {
@@ -99,14 +119,15 @@ func writePipeOut(b *bytebuffer.ByteBuffer, conn net.Conn) (err error) {
 
 // ReadIn 从入口读数据
 func (p *pipe) ReadIn(b *bytebuffer.ByteBuffer) (err error) {
-	return readPipeIn(p.In, b)
+	return readPipeIn(p.In, b, p.readTimeout)
 }
 
-func readPipeIn(conn net.Conn, b *bytebuffer.ByteBuffer) (err error) {
-	timeout := time.Second * 30
-	ddl := time.Now().Add(timeout)
-	conn.SetReadDeadline(ddl)
+func readPipeIn(conn net.Conn, b *bytebuffer.ByteBuffer, timeout ...time.Duration) (err error) {
+	if len(timeout) > 0 {
+		ddl := time.Now().Add(timeout[0])
+		conn.SetReadDeadline(ddl)
 
+	}
 	b.Length, err = conn.Read(b.Buf())
 	return
 }
@@ -142,7 +163,7 @@ func (p *pipe) flow() {
 func (p *pipe) flowFromIn(bf chan *bytebuffer.ByteBuffer) {
 	for {
 		b := bytebuffer.GetBuffer()
-		err := readPipeIn(p.In, b)
+		err := readPipeIn(p.In, b, p.readTimeout)
 		if err != nil {
 			bytebuffer.PutBuffer(b)
 			break
@@ -156,7 +177,7 @@ func (p *pipe) flowFromIn(bf chan *bytebuffer.ByteBuffer) {
 // flowToOut 数据从bf流入出口
 func (p *pipe) flowToOut(bf chan *bytebuffer.ByteBuffer) {
 	for b := range bf {
-		err := writePipeOut(b, p.Out)
+		err := writePipeOut(b, p.Out, p.writeTimeout)
 		bytebuffer.PutBuffer(b)
 		if err != nil {
 			break
