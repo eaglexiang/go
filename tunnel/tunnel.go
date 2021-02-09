@@ -192,3 +192,9 @@ func (t *Tunnel) SetRight(conn net.Conn) {
 	t.left2Right.Out = conn
 	t.right2Left.In = conn
 }
+
+// SetBufferSize 设置流动缓冲区的 buffer 尺寸
+func (t *Tunnel) SetBufferSize(size int) {
+	t.left2Right.BufferSize = size
+	t.right2Left.BufferSize = size
+}
