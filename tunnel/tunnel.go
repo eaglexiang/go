@@ -126,19 +126,29 @@ func (t *Tunnel) Flow() (err error) {
 }
 
 func (t *Tunnel) flow() (err error) {
-	errors := make(chan error, 1)
+	errors := make(chan error, 2)
+	wg := sync.WaitGroup{}
+	wg.Add(2)
+
 	go func() {
 		err := t.right2Left.Flow()
-		errors <- err
-		close(errors)
+		if err != nil {
+			errors <- err
+		}
+		wg.Done()
 	}()
 
-	err = t.left2Right.Flow()
-	if err != nil {
-		return
-	}
+	go func() {
+		err := t.left2Right.Flow()
+		if err != nil {
+			errors <- err
+		}
+		wg.Done()
+	}()
 
+	wg.Wait()
 	err = <-errors
+
 	return
 }
 
