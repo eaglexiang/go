@@ -136,7 +136,7 @@ func readPipeIn(conn net.Conn, b *bytebuffer.ByteBuffer, timeout ...time.Duratio
 // 数据会从入口流动到出口，并进行自动和透明的加解密处理
 // 此方法阻塞
 // 同一个pipe同时只能运行一次flow，多次flow会导致panic
-func (p *pipe) Flow() {
+func (p *pipe) Flow() (err error) {
 	p.l.Lock()
 	if p.flowed {
 		panic("pipe flowed already")
@@ -144,43 +144,60 @@ func (p *pipe) Flow() {
 	p.flowed = true
 	p.l.Unlock()
 
-	p.flow()
+	err = p.flow()
 
 	p.l.Lock()
 	p.flowed = false
 	p.l.Unlock()
+
+	return
 }
 
 // flow 开始流动
 // 此方法阻塞
-func (p *pipe) flow() {
+func (p *pipe) flow() (err error) {
 	var b = make(chan *bytebuffer.ByteBuffer, p.BufferSize)
-	go p.flowFromIn(b)
-	p.flowToOut(b)
+
+	errors := make(chan error, 1)
+
+	go p.flowFromIn(b, errors)
+
+	err = p.flowToOut(b)
+	if err != nil {
+		return
+	}
+
+	err = <-errors
+	return
 }
 
 // flowFromIn 数据从入口流入
-func (p *pipe) flowFromIn(bf chan *bytebuffer.ByteBuffer) {
+func (p *pipe) flowFromIn(bf chan *bytebuffer.ByteBuffer, errors chan<- error) {
 	for {
 		b := bytebuffer.GetBuffer()
 		err := readPipeIn(p.In, b, p.readTimeout)
 		if err != nil {
 			bytebuffer.PutBuffer(b)
+			errors <- err
+			close(errors)
 			break
 		}
 		bf <- b
 	}
 
 	close(bf)
+
+	return
 }
 
 // flowToOut 数据从bf流入出口
-func (p *pipe) flowToOut(bf chan *bytebuffer.ByteBuffer) {
+func (p *pipe) flowToOut(bf chan *bytebuffer.ByteBuffer) (err error) {
 	for b := range bf {
-		err := writePipeOut(b, p.Out, p.writeTimeout)
+		err = writePipeOut(b, p.Out, p.writeTimeout)
 		bytebuffer.PutBuffer(b)
 		if err != nil {
 			break
 		}
 	}
+	return
 }

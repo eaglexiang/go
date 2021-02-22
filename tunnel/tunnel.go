@@ -108,7 +108,7 @@ func (t *Tunnel) Closed() bool {
 // Flow 开始双向流动
 // 此方法阻塞
 // 同一个Tunnel同时只能执行一次Flow，多次Flow会导致panic
-func (t *Tunnel) Flow() {
+func (t *Tunnel) Flow() (err error) {
 	t.l.Lock()
 	if t.flowed {
 		panic("Tunnel flowed already")
@@ -116,23 +116,30 @@ func (t *Tunnel) Flow() {
 	t.flowed = true
 	t.l.Unlock()
 
-	wg := sync.WaitGroup{}
-	wg.Add(2)
-	go func() {
-		t.right2Left.Flow()
-		wg.Done()
-	}()
-	go func() {
-		t.left2Right.Flow()
-		wg.Done()
-	}()
-	wg.Wait()
-
-	t.Close()
+	err = t.flow()
 
 	t.l.Lock()
 	t.flowed = false
 	t.l.Unlock()
+
+	return
+}
+
+func (t *Tunnel) flow() (err error) {
+	errors := make(chan error, 1)
+	go func() {
+		err := t.right2Left.Flow()
+		errors <- err
+		close(errors)
+	}()
+
+	err = t.left2Right.Flow()
+	if err != nil {
+		return
+	}
+
+	err = <-errors
+	return
 }
 
 // IsNil Tunnel的Left和Right都为nil
