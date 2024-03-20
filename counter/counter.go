@@ -43,9 +43,10 @@ func (c *Counter) Down(step ...int64) (result int64) {
 
 	result = atomic.AddInt64(&c.Value, -1*_step)
 
-	if result < 0 {
-		panic("counter value shouldn't be less than 0")
-	}
+	return
+}
 
+func (c *Counter) Get() (result int64) {
+	result = atomic.LoadInt64(&c.Value)
 	return
 }
